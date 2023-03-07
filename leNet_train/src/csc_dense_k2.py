@@ -154,7 +154,8 @@ class CSC_FC(Layer):
             self.bias = None
         self.built = True
 
-    @tf.function
+    # @tf.function(input_signature=[tf.TensorSpec([None, None, None, 1])])
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None, None], dtype=tf.float32)])
     def call(self, inputs):
         if inputs.dtype.base_dtype != self._compute_dtype_object.base_dtype:
             inputs = tf.cast(inputs, dtype=self._compute_dtype_object)
@@ -191,8 +192,12 @@ class CSC_FC(Layer):
 
         rank = inputs.shape.rank
         ############################change self.kernel here############################
+        
         assert self.kernel.shape == self.my_filter.shape, "Filter mulitplied with a different shape array "+str(self.my_filter.shape) +" "+str(self.kernel.shape)
-        self.kernel = tf.multiply(self.kernel, self.my_filter)
+        
+        ## Kernel of a layer is a tf.Variable. To change its value, use the assign method.
+        self.kernel.assign(tf.multiply(self.kernel, self.my_filter))
+
         ###############################################################################
         if rank == 2 or rank is None:
             # We use embedding_lookup_sparse as a more efficient matmul

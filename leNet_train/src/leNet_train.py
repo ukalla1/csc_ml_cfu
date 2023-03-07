@@ -5,9 +5,13 @@ from tensorflow import keras
 from tensorflow.keras.models import Model
 import numpy as np
 
-from csc_dense_k2 import cscFC
+# from csc_dense_k2 import cscFC
+from csc_dense_k2 import CSC_FC
 
-global ct
+def representative_data_gen():
+    for input_value in _ds.take(100):
+        yield [input_value]
+
 
 def getCustomMatrix(C, N, F, S):
   CustomMatrix = np.full((C, N), 0)
@@ -19,6 +23,10 @@ def getCustomMatrix(C, N, F, S):
 
   # CustomMatrix = tf.convert_to_tensor(CustomMatrix, dtype=tf.float32)
   return CustomMatrix
+
+def cscFC(units, my_filter, activation):
+    layer = CSC_FC(units=units, my_filter=my_filter, activation=activation, use_bias=False)
+    return layer
 
 #load data
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
@@ -56,7 +64,30 @@ model.summary()
 model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
 history = model.fit(x_train, y_train, batch_size=64, epochs=40, validation_data=(x_val, y_val))
 model.summary()
-model.save('../bin/models/leNet_trained_test.h5')
+model.save('../bin/models/leNet_trained_test_2.h5')
+
+# #tflite convert
+# new_layer = CSC_FC()
+concrete_func = model.call.get_concrete_function()
+converter = tf.lite.TFliteConverter.from_concrete_functions([concrete_func], model)
+tflite_model = converter.convert()
+
+with open('./test.tflite', 'wb') as f:
+  f.write(tflite_model)
+# images = tf.cast(x_val, tf.float32)
+# _ds = tf.data.Dataset.from_tensor_slices(images).batch(1)
+
+# # converter = tf.lite.TFLiteConverter.from_keras_model(model)
+# converter = tf.lite.TFLiteConverter.from_concrete_functions(cscFC)
+# converter.allow_custom_ops = True
+# converter.optimizations = [tf.lite.Optimize.DEFAULT]
+# converter.representative_dataset = tf.lite.RepresentativeDataset(representative_data_gen)
+# converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+# converter.inference_input_type = tf.float32
+# converter.inference_output_type = tf.float32
+
+# tflite_model = converter.convert()
+# open('../bin/models/leNet_trained_test.tflite', 'wb').write(tflite_model)
 
 fig, axs = plt.subplots(2, 1, figsize=(15,15))
 axs[0].plot(history.history['loss'])
@@ -67,4 +98,4 @@ axs[1].plot(history.history['accuracy'])
 axs[1].plot(history.history['val_accuracy'])
 axs[1].title.set_text('Training Accuracy vs Validation Accuracy')
 axs[1].legend(['Train', 'Val'])
-plt.savefig('../bin/misc/leNet_train_acc_test.png')
+plt.savefig('../bin/misc/leNet_train_acc_test_2.png')
