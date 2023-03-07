@@ -66,28 +66,19 @@ history = model.fit(x_train, y_train, batch_size=64, epochs=40, validation_data=
 model.summary()
 model.save('../bin/models/leNet_trained_test_2.h5')
 
-# #tflite convert
-# new_layer = CSC_FC()
-concrete_func = model.call.get_concrete_function()
-converter = tf.lite.TFliteConverter.from_concrete_functions([concrete_func], model)
+#tflite convert
+images = tf.cast(x_val, tf.float32)
+_ds = tf.data.Dataset.from_tensor_slices(images).batch(1)
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
+converter.allow_custom_ops = True
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+converter.representative_dataset = tf.lite.RepresentativeDataset(representative_data_gen)
+converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+converter.inference_input_type = tf.int8
+converter.inference_output_type = tf.int8
+
 tflite_model = converter.convert()
-
-with open('./test.tflite', 'wb') as f:
-  f.write(tflite_model)
-# images = tf.cast(x_val, tf.float32)
-# _ds = tf.data.Dataset.from_tensor_slices(images).batch(1)
-
-# # converter = tf.lite.TFLiteConverter.from_keras_model(model)
-# converter = tf.lite.TFLiteConverter.from_concrete_functions(cscFC)
-# converter.allow_custom_ops = True
-# converter.optimizations = [tf.lite.Optimize.DEFAULT]
-# converter.representative_dataset = tf.lite.RepresentativeDataset(representative_data_gen)
-# converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-# converter.inference_input_type = tf.float32
-# converter.inference_output_type = tf.float32
-
-# tflite_model = converter.convert()
-# open('../bin/models/leNet_trained_test.tflite', 'wb').write(tflite_model)
+open('../bin/models/leNet_trained_test_2.tflite', 'wb').write(tflite_model)
 
 fig, axs = plt.subplots(2, 1, figsize=(15,15))
 axs[0].plot(history.history['loss'])
