@@ -10,6 +10,8 @@ from keras.engine.base_layer import Layer
 from keras.engine.input_spec import InputSpec
 from tensorflow.python.layers import base
 
+import numpy as np
+
 # isort: off
 from tensorflow.python.util.tf_export import keras_export
 
@@ -79,7 +81,11 @@ class CSC_FC(Layer):
     def __init__(
         self,
         units,
-        my_filter,
+        # my_filter,                                #replacing this with the actual params
+        CSC_C,
+        CSC_N,
+        CSC_F,
+        CSC_S,
         activation=None,
         use_bias=True,
         kernel_initializer="glorot_uniform",
@@ -94,7 +100,6 @@ class CSC_FC(Layer):
         super().__init__(activity_regularizer=activity_regularizer, **kwargs)
 
         self.units = int(units) if not isinstance(units, int) else units
-        self.my_filter = my_filter
         if self.units < 0:
             raise ValueError(
                 "Received an invalid value for `units`, expected "
@@ -111,6 +116,13 @@ class CSC_FC(Layer):
 
         self.input_spec = InputSpec(min_ndim=2)
         self.supports_masking = True
+
+        # self.my_filter = my_filter                #replacing this with the actual params
+        self.CSC_C = CSC_C
+        self.CSC_N = CSC_N
+        self.CSC_F = CSC_F
+        self.CSC_S = CSC_S
+        
 
     def build(self, input_shape):
         dtype = tf.as_dtype(self.dtype or backend.floatx())
@@ -193,10 +205,23 @@ class CSC_FC(Layer):
         rank = inputs.shape.rank
         ############################change self.kernel here############################
         
-        assert self.kernel.shape == self.my_filter.shape, "Filter mulitplied with a different shape array "+str(self.my_filter.shape) +" "+str(self.kernel.shape)
+        CustomMatrix = np.full((self.CSC_C, self.CSC_N), 0)
+        for f in range (0, self.CSC_F):
+            CustomMatrix [0, f*self.CSC_S]= 1
+        for c in range (1, self.CSC_C):
+            for n in range (0, self.CSC_N):
+                CustomMatrix [c, n] = CustomMatrix [c-1, (n-1)%self.CSC_N]
+        CustomMatrix = tf.convert_to_tensor(CustomMatrix, dtype=tf.float32)
+
+        # assert self.kernel.shape == self.my_filter.shape, "Filter mulitplied with a different shape array "+str(self.my_filter.shape) +" "+str(self.kernel.shape)
+        assert self.kernel.shape == CustomMatrix.shape, "Filter mulitplied with a different shape array "+str(CustomMatrix.shape) +" "+str(self.kernel.shape)
         
         ## Kernel of a layer is a tf.Variable. To change its value, use the assign method.
-        self.kernel.assign(tf.multiply(self.kernel, self.my_filter))
+        # self.kernel.assign(tf.multiply(self.kernel, self.my_filter))
+
+        ## Kernel of a layer is a tf.Variable. To change its value, use the assign method.
+        ##mod to handle the custom_matrix generated internally
+        self.kernel.assign(tf.multiply(self.kernel, CustomMatrix))
 
         ###############################################################################
         if rank == 2 or rank is None:
@@ -318,8 +343,31 @@ class CSC_FC(Layer):
 #             bias_constraint=None,
 #             **kwargs)
 
-def cscFC(units, my_filter, activation):
-    layer = CSC_FC(units=units, my_filter=my_filter, activation=activation, use_bias=False)
-    return layer
+## csc layer: trying to replicate mortezas efforts
+# def cscFC(units, my_filter, activation):
+#     layer = CSC_FC(units=units, my_filter=my_filter, activation=activation, use_bias=False)
+#     return layer
 
-    # return layer()
+
+#csc layer: movign the csc params into the lib, to bake the csc params into the tflite model
+def cscFC(units, activation, CSC_C, CSC_N, CSC_F, CSC_S):
+    '''
+        units,
+        # my_filter,                                #replacing this with the actual params
+        C,
+        N,
+        F,
+        S,
+        activation=None,
+        use_bias=True,
+        kernel_initializer="glorot_uniform",
+        bias_initializer="zeros",
+        kernel_regularizer=None,
+        bias_regularizer=None,
+        activity_regularizer=None,
+        kernel_constraint=None,
+        bias_constraint=None,
+        **kwargs,
+    '''
+    layer = CSC_FC(units=units, activation=activation, use_bias=False, CSC_C=CSC_C, CSC_N=CSC_N, CSC_F=CSC_F, CSC_S=CSC_S)
+    return layer

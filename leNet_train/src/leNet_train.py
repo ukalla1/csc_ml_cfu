@@ -5,28 +5,29 @@ from tensorflow import keras
 from tensorflow.keras.models import Model
 import numpy as np
 
-# from csc_dense_k2 import cscFC
-from csc_dense_k2 import CSC_FC
+from csc_dense_k2 import cscFC
+# from csc_dense_k2 import CSC_FC
 
 def representative_data_gen():
     for input_value in _ds.take(100):
         yield [input_value]
 
 
-def getCustomMatrix(C, N, F, S):
-  CustomMatrix = np.full((C, N), 0)
-  for f in range (0, F):
-    CustomMatrix [0, f*S]= 1
-  for c in range (1, C):
-    for n in range (0, N):
-      CustomMatrix [c, n] = CustomMatrix [c-1, (n-1)%N]
+##moving this to CSC_FC
+# def getCustomMatrix(C, N, F, S):
+#   CustomMatrix = np.full((C, N), 0)
+#   for f in range (0, F):
+#     CustomMatrix [0, f*S]= 1
+#   for c in range (1, C):
+#     for n in range (0, N):
+#       CustomMatrix [c, n] = CustomMatrix [c-1, (n-1)%N]
 
-  # CustomMatrix = tf.convert_to_tensor(CustomMatrix, dtype=tf.float32)
-  return CustomMatrix
+#   # CustomMatrix = tf.convert_to_tensor(CustomMatrix, dtype=tf.float32)
+#   return CustomMatrix
 
-def cscFC(units, my_filter, activation):
-    layer = CSC_FC(units=units, my_filter=my_filter, activation=activation, use_bias=False)
-    return layer
+# def cscFC(units, my_filter, activation):
+#     layer = CSC_FC(units=units, my_filter=my_filter, activation=activation, use_bias=False)
+#     return layer
 
 #load data
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
@@ -57,8 +58,10 @@ model.add(layers.Conv2D(120, 5, activation='tanh'))
 model.add(layers.Flatten())
 # model.add(layers.Dense(84, activation='tanh'))
 # model.add(layers.Dense(10, activation='softmax'))
-model.add(cscFC(units=84, my_filter=getCustomMatrix(120, 84, 16, 2), activation='tanh'))
-model.add(cscFC(units=10, my_filter=getCustomMatrix(84, 10, 8, 1), activation='softmax'))
+# model.add(cscFC(units=84, my_filter=getCustomMatrix(120, 84, 16, 2), activation='tanh'))          ##adding csc layer by passing the bi-adj matrix to it
+# model.add(cscFC(units=10, my_filter=getCustomMatrix(84, 10, 8, 1), activation='softmax'))         ##adding csc layer by passing the bi-adj matrix to it
+model.add(cscFC(units=84, activation='tanh', CSC_C=120, CSC_N=84, CSC_F=16, CSC_S=2))                             ##adding csc layer by passing the csc params   
+model.add(cscFC(units=10, activation='softmax', CSC_C=84, CSC_N=10, CSC_F=8, CSC_S=1))                            ##adding csc layer by passing the csc params
 model.summary()
 
 model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])

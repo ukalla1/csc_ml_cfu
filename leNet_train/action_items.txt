@@ -1,0 +1,5 @@
+03/06/22:
+1. move the get_custom_matrix func into the custom tf lib
+	1.1 this should open the path to bake the csc params into the tflite model
+		1.1.1 these params offer new loop limits and in-turn latency savings on mobile and edge setups
+2. elaborate the csc-fc in cpp (refer to the code for regular fc, small modification will accomplish our goal)
