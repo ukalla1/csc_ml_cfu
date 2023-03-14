@@ -46,6 +46,11 @@ y_val = y_train[-2000:]
 x_train = x_train[:-2000,:,:,:]
 y_train = y_train[:-2000]
 
+CSC_C = tf.Variable(0)
+CSC_N = tf.Variable(0)
+CSC_F = tf.Variable(0)
+CSC_S = tf.Variable(0)
+
 # model = models.Sequential()
 model = tf.keras.Sequential()
 model.add(layers.Conv2D(6, 5, activation='tanh', input_shape=x_train.shape[1:]))
@@ -60,7 +65,15 @@ model.add(layers.Flatten())
 # model.add(layers.Dense(10, activation='softmax'))
 # model.add(cscFC(units=84, my_filter=getCustomMatrix(120, 84, 16, 2), activation='tanh'))          ##adding csc layer by passing the bi-adj matrix to it
 # model.add(cscFC(units=10, my_filter=getCustomMatrix(84, 10, 8, 1), activation='softmax'))         ##adding csc layer by passing the bi-adj matrix to it
-model.add(cscFC(units=84, activation='tanh', CSC_C=120, CSC_N=84, CSC_F=16, CSC_S=2))                             ##adding csc layer by passing the csc params   
+CSC_C.assign(120)
+CSC_N.assign(84)
+CSC_F.assign(16)
+CSC_S.assign(2)
+model.add(cscFC(units=84, activation='tanh', CSC_C = 120, CSC_N = 84, CSC_F=16, CSC_S=2))                             ##adding csc layer by passing the csc params   
+CSC_C.assign(84)
+CSC_N.assign(10)
+CSC_F.assign(8)
+CSC_S.assign(1)
 model.add(cscFC(units=10, activation='softmax', CSC_C=84, CSC_N=10, CSC_F=8, CSC_S=1))                            ##adding csc layer by passing the csc params
 model.summary()
 
@@ -73,7 +86,7 @@ model.save('../bin/models/leNet_trained_test_2.h5')
 images = tf.cast(x_val, tf.float32)
 _ds = tf.data.Dataset.from_tensor_slices(images).batch(1)
 converter = tf.lite.TFLiteConverter.from_keras_model(model)
-converter.allow_custom_ops = True
+# converter.allow_custom_ops = True
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 converter.representative_dataset = tf.lite.RepresentativeDataset(representative_data_gen)
 converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]

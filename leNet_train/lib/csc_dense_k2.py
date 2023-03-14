@@ -16,7 +16,8 @@ import numpy as np
 from tensorflow.python.util.tf_export import keras_export
 
 
-@keras_export("keras.layers.CSC_FC")
+# @keras_export("keras.layers.CSC_FC")
+@tf.keras.utils.register_keras_serializable()
 class CSC_FC(Layer):
     """Just your regular densely-connected NN layer.
     `Dense` implements the operation:
@@ -97,7 +98,7 @@ class CSC_FC(Layer):
         bias_constraint=None,
         **kwargs,
     ):
-        super().__init__(activity_regularizer=activity_regularizer, **kwargs)
+        super(CSC_FC, self).__init__(activity_regularizer=activity_regularizer, **kwargs)
 
         self.units = int(units) if not isinstance(units, int) else units
         if self.units < 0:
@@ -286,7 +287,7 @@ class CSC_FC(Layer):
         return input_shape[:-1].concatenate(self.units)
 
     def get_config(self):
-        config = super().get_config()
+        config = super(CSC_FC, self).get_config()
         config.update(
             {
                 "units": self.units,
@@ -310,7 +311,25 @@ class CSC_FC(Layer):
                 "kernel_constraint": constraints.serialize(
                     self.kernel_constraint
                 ),
-                "bias_constraint": constraints.serialize(self.bias_constraint),
+                "bias_constraint": constraints.serialize(
+                    self.bias_constraint
+                ),
+                "CSC_C": self.CSC_C,
+                "CSC_N": self.CSC_N,
+                "CSC_F": self.CSC_F,
+                "CSC_S": self.CSC_S,
+                # "CSC_C": constraints.serialize(
+                #     self.CSC_C
+                # ),
+                # "CSC_N": constraints.serialize(
+                #     self.CSC_N
+                # ),
+                # "CSC_F": constraints.serialize(
+                #     self.CSC_F
+                # ),
+                # "CSC_S": constraints.serialize(
+                #     self.CSC_S
+                # ),
             }
         )
         return config

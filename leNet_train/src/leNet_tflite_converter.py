@@ -4,9 +4,11 @@ from keras.models import Model
 import os
 import matplotlib as plt
 
+from csc_dense_k2 import CSC_FC
+
 
 def load_model(path):
-	m = tf.keras.models.load_model(path)
+	m = tf.keras.models.load_model(path, custom_objects={'CSC_FC': CSC_FC})
 	# custom_objects = {"CSC_FC": CustomLayer}
 	# with keras.utils.custom_object_scope(custom_objects):
 	# 	m = keras.Model.from_config(config)
