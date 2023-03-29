@@ -6,12 +6,30 @@ from tensorflow.keras.models import Model
 import numpy as np
 
 from csc_dense_k2 import cscFC
-# from csc_dense_k2 import CSC_FC
+from csc_dense_k2 import CSC_FC
 
 def representative_data_gen():
     for input_value in _ds.take(100):
         yield [input_value]
 
+def get_custom_op_registration():
+    return tf.load_op_library('/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so')
+
+def convert_model(model, tflite_file):
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+
+    converter.target_spec.custom_ops = [get_custom_op_registration()]
+
+    converter.target_spec.supported_ops = [
+        tf.lite.OpsSet.SELECT_TF_OPS,
+        tf.lite.OpsSet.TFLITE_BUILTINS,
+        "CSC_FC"
+    ]
+
+    tflite_model = converter.convert()
+
+    with open(tflite_file, 'wb') as f:
+        f.write(tflite_model)
 
 ##moving this to CSC_FC
 # def getCustomMatrix(C, N, F, S):
@@ -78,24 +96,35 @@ model.add(cscFC(units=10, activation='softmax', CSC_C=84, CSC_N=10, CSC_F=8, CSC
 model.summary()
 
 model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
-history = model.fit(x_train, y_train, batch_size=64, epochs=40, validation_data=(x_val, y_val))
+history = model.fit(x_train, y_train, batch_size=64, epochs=2, validation_data=(x_val, y_val))
 model.summary()
-model.save('../bin/models/leNet_trained_test_2.h5')
+model.save('../bin/models/')
 
 #tflite convert
-images = tf.cast(x_val, tf.float32)
-_ds = tf.data.Dataset.from_tensor_slices(images).batch(1)
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
+
+# convert_model(model, '../bin/models/leNet_trained_test_2.tflite')
+
+# images = tf.cast(x_val, tf.float32)
+# _ds = tf.data.Dataset.from_tensor_slices(images).batch(1)
+# converter = tf.lite.TFLiteConverter.from_keras_model(model)
 # converter.allow_custom_ops = True
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-converter.representative_dataset = tf.lite.RepresentativeDataset(representative_data_gen)
-converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-converter.inference_input_type = tf.int8
-converter.inference_output_type = tf.int8
+# converter.optimizations = [tf.lite.Optimize.DEFAULT]
+# converter.representative_dataset = tf.lite.RepresentativeDataset(representative_data_gen)
+# converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+# converter.inference_input_type = tf.int8
+# converter.inference_output_type = tf.int8
 
-tflite_model = converter.convert()
-open('../bin/models/leNet_trained_test_2.tflite', 'wb').write(tflite_model)
+# converter.target_spec.custom_ops = [get_custom_op_registration()]
+# converter.register_custom_opdefs({"CSC_FC": "CSC_FC"})
 
+
+#convert the model
+# tflite_model = converter.convert()
+# open('../bin/models/leNet_trained_test_2.tflite', 'wb').write(tflite_model)
+# with open("../bin/models/leNet_trained_test_2.tflite", "wb") as f:
+#     f.write(tflite_model)
+
+#generate acc graphs
 fig, axs = plt.subplots(2, 1, figsize=(15,15))
 axs[0].plot(history.history['loss'])
 axs[0].plot(history.history['val_loss'])
