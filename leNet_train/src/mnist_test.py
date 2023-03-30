@@ -44,7 +44,7 @@ y_test = tf.keras.utils.to_categorical(y_test, 10)
 # Define the model with the custom CSC_FC layer
 model = tf.keras.Sequential([
     tf.keras.layers.Input(shape=(28 * 28,)),
-    CSCFCLayer(units=128, csc_c=784, csc_n=128, csc_f=8, csc_s=1, activation='relu'),
+    CSCFCLayer(units=128, csc_c=784, csc_n=128, csc_f=776, csc_s=1, activation='relu'),
     tf.keras.layers.Dense(10, activation='softmax')
 ])
 

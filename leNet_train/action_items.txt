@@ -1,5 +1,34 @@
-03/06/22:
+03/06/23:
 1. move the get_custom_matrix func into the custom tf lib
 	1.1 this should open the path to bake the csc params into the tflite model
 		1.1.1 these params offer new loop limits and in-turn latency savings on mobile and edge setups
 2. elaborate the csc-fc in cpp (refer to the code for regular fc, small modification will accomplish our goal)
+
+03/13/23:
+Moved the custom matrix generation into the custom layer, and noticed the csc parameters in the .h5 model
+Noticing that the tflite model still is composed of a collection of built in layers
+
+03/20/23:
+The custom layer form the above step does not really open a path to incorporate the custom operator into tflite
+	The reason is because the custom layer uses a collection of built in operators in tensroflow and hence tflite as well
+An alternative is to implement the custom layer as a custom operator in tensorflow that way the tflite will be composed of the single new operator
+But this hinders the model being used in tflite
+	This is because the interpreter does not know about the new operator
+	Need to implement the custom operator in tflite as well
+Finally rebuild the tf and the tflite libraries to generate a shared library
+
+03/24/23:
+Implemented the custom operator and rebuilt the tensorflow and the tflite shared libraries (after a boat-load of error fixs lmao)
+	Also to keep in mind: 'As google update the tesnorflow repo it might be an issue to reuse the custom operator'
+	One example is the Status::OK() method. It was changed to OKStatus() and it took me nearly 26 hrs of consistant back and forth to figure and fix. This might continue. Refer to the tf changelogs (https://pyup.io/packages/pypi/tensorflow-text/changelog)
+		Also to keep in mind is the undefined symbol errors. Whcih could be due to certain attributes being updated.
+
+03/29/23:
+While im able to train and save a model with the new custom operator (keep in mind at this point only tf.saved_model.save() works. The keras save does not work because the new operator is not known to keras), the conversion of the model to tflite still gives me errors.
+Atm Im using OpHint() to provide necessary info to the converter object.
+	Once again i notice that the certain attributes have changed. This is giving me attribte errors. 
+		Here it does not depend on the tensorflow repo but the version i have installed on my machine.
+			Im using tf 2.12, is this buggy? Might have to downgrade to 2.11 or lower.
+Parallely try to run this for the leNet model and check for the difference in the accuracy between the regualr fc and csc_fc layers.
+Alternatively, can I push the tflite lib mods to the next version? (decisions, decisions)
+	This shoudl allow me to write a paper. For the sake of inference I can use my pc and for an edge device does Jetson-Nano and Rasberry-Pi work?

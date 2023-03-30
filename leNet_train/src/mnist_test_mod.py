@@ -28,6 +28,7 @@ csc_fc_grad = csc_fc_module.csc_fc_grad
 def _csc_fc_grad_cc(op, grad):
     gradients = csc_fc_grad(op.inputs[0], op.inputs[1], grad, op.inputs[3], op.inputs[4], op.inputs[5], op.inputs[6])
     return gradients[0], gradients[1], None, None, None, None, None
+    # return gradients[0], gradients[1], gradients[2], gradients[3], gradients[4], None, None
 
 
 # Define the custom op wrapper function
@@ -60,8 +61,9 @@ class CSCFCLayer(tf.keras.layers.Layer):
         self.bias = tf.Variable(tf.zeros([csc_n], dtype=tf.float32))
 
     def call(self, inputs):
-        csc_fc_output = csc_fc(inputs, self.kernel, self.bias, self.csc_c, self.csc_n, self.csc_f, self.csc_s)
-        return CscFcOpHint(self)(inputs, csc_fc_output)
+        # csc_fc_output = csc_fc(inputs, self.kernel, self.bias, self.csc_c, self.csc_n, self.csc_f, self.csc_s)
+        return (csc_fc(inputs, self.kernel, self.bias, self.csc_c, self.csc_n, self.csc_f, self.csc_s))
+        # return CscFcOpHint(self)(inputs, csc_fc_output)
 
     def get_config(self):
         config = super(CSCFCLayer, self).get_config()
