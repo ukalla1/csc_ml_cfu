@@ -1,0 +1,49 @@
+#pragma once
+
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/user_ops/include/c_api.h"
+#include "tensorflow/python/lib/core/py_util.h"
+
+namespace PyoHelper {
+
+template <typename T, int NDIMS>
+bool PyArrayToTensor(PyObject* obj, Tensor* out_tensor) {
+  if (!tensorflow::PyArray_Check(obj)) {
+    return false;
+  }
+
+  tensorflow::TensorShape shape;
+  tensorflow::int64 nelems = 1;
+  for (int i = 0; i < NDIMS; ++i) {
+    shape.AddDim(tensorflow::PyArray_SHAPE(reinterpret_cast<PyArrayObject*>(obj))[i]);
+    nelems *= shape.dim_size(i);
+  }
+
+  tensorflow::Tensor tensor(tensorflow::DataTypeToEnum<T>::value, shape);
+  memcpy(tensor.flat<T>().data(), tensorflow::PyArray_DATA(reinterpret_cast<PyArrayObject*>(obj)), nelems * sizeof(T));
+
+  *out_tensor = tensor;
+  return true;
+}
+
+template <typename T, int NDIMS>
+bool TensorToPyArray(const Tensor& tensor, PyObject** out_obj) {
+  tensorflow::int64 nelems = 1;
+  npy_intp dims[NDIMS];
+  for (int i = 0; i < NDIMS; ++i) {
+    dims[i] = tensor.dim_size(i);
+    nelems *= dims[i];
+  }
+
+  PyArrayObject* array = reinterpret_cast<PyArrayObject*>(PyArray_SimpleNew(NDIMS, dims, tensorflow::DataTypeToEnum<T>::value));
+  if (!array) {
+    return false;
+  }
+
+  memcpy(tensorflow::PyArray_DATA(array), tensor.flat<T>().data(), nelems * sizeof(T));
+  *out_obj = reinterpret_cast<PyObject*>(array);
+  return true;
+}
+
+}  // namespace PyoHelper

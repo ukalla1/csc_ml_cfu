@@ -1,0 +1,37 @@
+// #ifndef CSC_FC_GRAD_OP_H_
+// #define CSC_FC_GRAD_OP_H_
+
+// #include "tensorflow/core/framework/op_kernel.h"
+// #include "tensorflow/core/framework/shape_inference.h"
+// #include "tensorflow/core/framework/tensor_types.h"
+// #include "tensorflow/core/platform/macros.h"
+// #include "tensorflow/core/platform/types.h"
+
+// namespace tensorflow {
+
+// class CscFcGradOp : public OpKernel {
+//  public:
+//   explicit CscFcGradOp(OpKernelConstruction* context);
+//   void Compute(OpKernelContext* context) override;
+// };
+
+// }  // namespace tensorflow
+
+// #endif  // CSC_FC_GRAD_OP_H_
+
+#ifndef TENSORFLOW_CORE_USER_OPS_CSC_FC_GRAD_OP_H_
+#define TENSORFLOW_CORE_USER_OPS_CSC_FC_GRAD_OP_H_
+
+#include "tensorflow/core/framework/op_kernel.h"
+#include <iostream>
+
+class CscFcGradOp : public tensorflow::OpKernel {
+ public:
+  explicit CscFcGradOp(tensorflow::OpKernelConstruction* context);
+
+  void Compute(tensorflow::OpKernelContext* context) override;
+};
+
+// std::cout << "CSC_FC_GRAD_OP_H included" << std::endl;
+
+#endif  // TENSORFLOW_CORE_USER_OPS_CSC_FC_GRAD_OP_H_

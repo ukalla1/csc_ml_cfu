@@ -46,8 +46,8 @@ class CscFcOpHint(OpHint):
     def __call__(self, inputs, outputs):
         input_shape = tf.constant(inputs.shape.as_list()[1:], dtype=tf.int32)
         output_shape = tf.constant(outputs.shape.as_list()[1:], dtype=tf.int32)
-        self.add_hint("input_shape", input_shape)
-        self.add_hint("output_shape", output_shape)
+        self.add_int_list("input_shape", input_shape)
+        self.add_int_list("output_shape", output_shape)
         return outputs
 
 class CSCFCLayer(tf.keras.layers.Layer):
@@ -61,9 +61,9 @@ class CSCFCLayer(tf.keras.layers.Layer):
         self.bias = tf.Variable(tf.zeros([csc_n], dtype=tf.float32))
 
     def call(self, inputs):
-        # csc_fc_output = csc_fc(inputs, self.kernel, self.bias, self.csc_c, self.csc_n, self.csc_f, self.csc_s)
-        return (csc_fc(inputs, self.kernel, self.bias, self.csc_c, self.csc_n, self.csc_f, self.csc_s))
-        # return CscFcOpHint(self)(inputs, csc_fc_output)
+        csc_fc_output = csc_fc(inputs, self.kernel, self.bias, self.csc_c, self.csc_n, self.csc_f, self.csc_s)
+        # return (csc_fc(inputs, self.kernel, self.bias, self.csc_c, self.csc_n, self.csc_f, self.csc_s))
+        return CscFcOpHint(self)(inputs, csc_fc_output)
 
     def get_config(self):
         config = super(CSCFCLayer, self).get_config()
