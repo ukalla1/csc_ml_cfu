@@ -4,48 +4,53 @@ from tensorflow.keras import datasets, layers, models, losses
 from tensorflow import keras
 from tensorflow.keras.models import Model
 import numpy as np
+from tensorflow.keras.layers import Lambda
+from tensorflow.python.framework import ops
+import importlib
+import sys
+from tensorflow.lite.python.op_hint import OpHint
+import datetime
 
-from csc_dense_k2 import cscFC
-from csc_dense_k2 import CSC_FC
+csc_fc_lib_path = '/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/core/user_ops/csc_fc_op.so'
 
-def representative_data_gen():
-    for input_value in _ds.take(100):
-        yield [input_value]
+# Check if the custom op has already been imported
+if 'csc_fc_module' not in sys.modules:
+    print("Not found, importing CSC_FC module")
+    csc_fc_module = tf.load_op_library(csc_fc_lib_path)
+else:
+    print("Found, reloading CSC_FC module")
+    csc_fc_module = importlib.reload(sys.modules['csc_fc_module'])
 
-def get_custom_op_registration():
-    return tf.load_op_library('/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so')
+csc_fc = csc_fc_module.csc_fc
+csc_fc_grad = csc_fc_module.csc_fc_grad
 
-def convert_model(model, tflite_file):
-    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+@ops.RegisterGradient("CscFc")
+def _csc_fc_grad_cc(op, grad):
+    gradients = csc_fc_grad(op.inputs[0], op.inputs[1], grad, op.inputs[3], op.inputs[4], op.inputs[5], op.inputs[6])
+    return gradients[0], gradients[1], None, None, None, None, None
 
-    converter.target_spec.custom_ops = [get_custom_op_registration()]
+class CSCFCLayer(tf.keras.layers.Layer):
+    def __init__(self, csc_c, csc_n, csc_f, csc_s, **kwargs):
+        super(CSCFCLayer, self).__init__(**kwargs)
+        self.csc_c = csc_c
+        self.csc_n = csc_n
+        self.csc_f = csc_f
+        self.csc_s = csc_s
+        self.kernel = tf.Variable(tf.random.normal([csc_c, csc_n], stddev=0.05, dtype=tf.float32))
+        self.bias = tf.Variable(tf.zeros([csc_n], dtype=tf.float32))
 
-    converter.target_spec.supported_ops = [
-        tf.lite.OpsSet.SELECT_TF_OPS,
-        tf.lite.OpsSet.TFLITE_BUILTINS,
-        "CSC_FC"
-    ]
+    def call(self, inputs):
+        return (csc_fc(inputs, self.kernel, self.bias, self.csc_c, self.csc_n, self.csc_f, self.csc_s))
 
-    tflite_model = converter.convert()
-
-    with open(tflite_file, 'wb') as f:
-        f.write(tflite_model)
-
-##moving this to CSC_FC
-# def getCustomMatrix(C, N, F, S):
-#   CustomMatrix = np.full((C, N), 0)
-#   for f in range (0, F):
-#     CustomMatrix [0, f*S]= 1
-#   for c in range (1, C):
-#     for n in range (0, N):
-#       CustomMatrix [c, n] = CustomMatrix [c-1, (n-1)%N]
-
-#   # CustomMatrix = tf.convert_to_tensor(CustomMatrix, dtype=tf.float32)
-#   return CustomMatrix
-
-# def cscFC(units, my_filter, activation):
-#     layer = CSC_FC(units=units, my_filter=my_filter, activation=activation, use_bias=False)
-#     return layer
+    def get_config(self):
+        config = super(CSCFCLayer, self).get_config()
+        config.update({
+            'csc_c': self.csc_c,
+            'csc_n': self.csc_n,
+            'csc_f': self.csc_f,
+            'csc_s': self.csc_s
+        })
+        return config
 
 #load data
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
@@ -80,49 +85,22 @@ model.add(layers.Activation('sigmoid'))
 model.add(layers.Conv2D(120, 5, activation='tanh'))
 model.add(layers.Flatten())
 # model.add(layers.Dense(84, activation='tanh'))
-# model.add(layers.Dense(10, activation='softmax'))
-# model.add(cscFC(units=84, my_filter=getCustomMatrix(120, 84, 16, 2), activation='tanh'))          ##adding csc layer by passing the bi-adj matrix to it
-# model.add(cscFC(units=10, my_filter=getCustomMatrix(84, 10, 8, 1), activation='softmax'))         ##adding csc layer by passing the bi-adj matrix to it
-CSC_C.assign(120)
-CSC_N.assign(84)
-CSC_F.assign(16)
-CSC_S.assign(2)
-model.add(cscFC(units=84, activation='tanh', CSC_C = 120, CSC_N = 84, CSC_F=16, CSC_S=2))                             ##adding csc layer by passing the csc params   
-CSC_C.assign(84)
-CSC_N.assign(10)
-CSC_F.assign(8)
-CSC_S.assign(1)
-model.add(cscFC(units=10, activation='softmax', CSC_C=84, CSC_N=10, CSC_F=8, CSC_S=1))                            ##adding csc layer by passing the csc params
+model.add(CSCFCLayer(csc_c=120, csc_n=84, csc_f=10, csc_s=1))
+model.add(layers.Dense(10, activation='softmax'))
+# model.add(CSCFCLayer(csc_c=84, csc_n=10, csc_f=42, csc_s=1))
 model.summary()
 
 model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
-history = model.fit(x_train, y_train, batch_size=64, epochs=2, validation_data=(x_val, y_val))
+
+# log_dir = "../bin/updated/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+log_dir = "../bin/updated/logs/fit/leNet_with_CSC_12xComp_test2"
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+
+history = model.fit(x_train, y_train, batch_size=64, epochs=32, validation_data=(x_val, y_val), callbacks=[tensorboard_callback])
 model.summary()
-model.save('../bin/models/')
-
-#tflite convert
-
-# convert_model(model, '../bin/models/leNet_trained_test_2.tflite')
-
-# images = tf.cast(x_val, tf.float32)
-# _ds = tf.data.Dataset.from_tensor_slices(images).batch(1)
-# converter = tf.lite.TFLiteConverter.from_keras_model(model)
-# converter.allow_custom_ops = True
-# converter.optimizations = [tf.lite.Optimize.DEFAULT]
-# converter.representative_dataset = tf.lite.RepresentativeDataset(representative_data_gen)
-# converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-# converter.inference_input_type = tf.int8
-# converter.inference_output_type = tf.int8
-
-# converter.target_spec.custom_ops = [get_custom_op_registration()]
-# converter.register_custom_opdefs({"CSC_FC": "CSC_FC"})
-
-
-#convert the model
-# tflite_model = converter.convert()
-# open('../bin/models/leNet_trained_test_2.tflite', 'wb').write(tflite_model)
-# with open("../bin/models/leNet_trained_test_2.tflite", "wb") as f:
-#     f.write(tflite_model)
+# model.save('../bin/models/')
+tf.saved_model.save(model, export_dir="../bin/models/test_tflite/")
 
 #generate acc graphs
 fig, axs = plt.subplots(2, 1, figsize=(15,15))
@@ -135,3 +113,29 @@ axs[1].plot(history.history['val_accuracy'])
 axs[1].title.set_text('Training Accuracy vs Validation Accuracy')
 axs[1].legend(['Train', 'Val'])
 plt.savefig('../bin/misc/leNet_train_acc_test_2.png')
+
+#tflite conversion
+def representative_dataset():
+    for data in x_test.take(100):
+        yield [tf.dtypes.cast(data, tf.float32)]
+
+saved_model_dir = "../bin/models/test_tflite/"
+converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
+
+# Provide a path to the TensorFlow Lite custom op library
+converter.target_spec.supported_ops = [
+    tf.lite.OpsSet.TFLITE_BUILTINS,
+    tf.lite.OpsSet.SELECT_TF_OPS,
+    ("/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so", "CscFc")
+]
+
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+converter.representative_dataset = representative_dataset
+converter.experimental_new_converter = True
+
+tflite_model = converter.convert()
+
+# Save the TFLite model
+print("-----------------------> Converter Success!!!")
+with open("converted_model.tflite", "wb") as f:
+    f.write(tflite_model)
