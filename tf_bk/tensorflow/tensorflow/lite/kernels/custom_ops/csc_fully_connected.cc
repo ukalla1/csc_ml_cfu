@@ -119,7 +119,7 @@ namespace tflite{
             }
 
             extern "C" TFL_CAPI_EXPORT TfLiteRegistration* TFL_RegisterCSC_FC() {
-                static TfLiteRegistration r = {nullptr, nullptr, CSC_FC::Prepare, CSC_FC::Invoke};
+                static TfLiteRegistration r = {nullptr, nullptr, CSC_FC::Prepare, CSC_FC::Invoke, "CscFc"};
                 return &r;
             }
 
