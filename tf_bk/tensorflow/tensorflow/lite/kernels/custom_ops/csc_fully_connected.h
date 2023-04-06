@@ -34,10 +34,10 @@ namespace tflite{
         namespace custom{
 
             struct CSC_Params{
-                int32_t CSC_C;
-                int32_t CSC_N;
-                int32_t CSC_F;
-                int32_t CSC_S;
+                int CSC_C;
+                int CSC_N;
+                int CSC_F;
+                int CSC_S;
             };
 
             // class CSC_FC : public OpKernel {

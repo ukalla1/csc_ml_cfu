@@ -345,22 +345,51 @@
 
 ###################################################################################################################
 
-import tensorflow as tf
+# import tensorflow as tf
 
-# Load your SavedModel
-saved_model_dir = "../bin/models/"
+# # Load your SavedModel
+# saved_model_dir = "../bin/models/"
+# converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
+
+# # Enable the custom op in the converter
+# converter.target_spec.supported_ops = [
+#     tf.lite.OpsSet.TFLITE_BUILTINS,  # Enable TensorFlow Lite built-in ops
+#     tf.lite.OpsSet.SELECT_TF_OPS  # Enable TensorFlow Select ops
+# ]
+
+# # Convert the model
+# tflite_model = converter.convert()
+
+# # Save the TFLite model
+# with open("converted_model.tflite", "wb") as f:
+#     f.write(tflite_model)
+
+#################################################################################################
+
+#tflite conversion
+def representative_dataset():
+    for data in x_test.take(100):
+        yield [tf.dtypes.cast(data, tf.float32)]
+
+saved_model_dir = "../bin/models/test_tflite/"
 converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
 
-# Enable the custom op in the converter
+# Provide a path to the TensorFlow Lite custom op library
 converter.target_spec.supported_ops = [
-    tf.lite.OpsSet.TFLITE_BUILTINS,  # Enable TensorFlow Lite built-in ops
-    tf.lite.OpsSet.SELECT_TF_OPS  # Enable TensorFlow Select ops
+    tf.lite.OpsSet.TFLITE_BUILTINS,
+    tf.lite.OpsSet.SELECT_TF_OPS,
+    ({"/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so"}, "CscFc")
 ]
 
-# Convert the model
+
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+converter.representative_dataset = representative_dataset
+converter.experimental_new_converter = True
+
 tflite_model = converter.convert()
 
 # Save the TFLite model
+print("-----------------------> Converter Success!!!")
 with open("converted_model.tflite", "wb") as f:
     f.write(tflite_model)
 

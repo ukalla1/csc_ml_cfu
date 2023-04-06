@@ -74,7 +74,7 @@ CSC_N = tf.Variable(0)
 CSC_F = tf.Variable(0)
 CSC_S = tf.Variable(0)
 
-# model = models.Sequential()
+model = models.Sequential()
 model = tf.keras.Sequential()
 model.add(layers.Conv2D(6, 5, activation='tanh', input_shape=x_train.shape[1:]))
 model.add(layers.AveragePooling2D(2))
@@ -93,7 +93,7 @@ model.summary()
 model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
 
 # log_dir = "../bin/updated/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-log_dir = "../bin/updated/logs/fit/leNet_with_CSC_12xComp_test2"
+log_dir = "../bin/updated/logs/fit/leNet_with_CSC_12xComp_test3"
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 
@@ -126,7 +126,7 @@ converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
 converter.target_spec.supported_ops = [
     tf.lite.OpsSet.TFLITE_BUILTINS,
     tf.lite.OpsSet.SELECT_TF_OPS,
-    ({"/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so"}, "CscFc")
+    ("/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so", "CscFc")
 ]
 
 

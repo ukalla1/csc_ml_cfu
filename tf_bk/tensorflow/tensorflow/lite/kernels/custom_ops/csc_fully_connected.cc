@@ -56,10 +56,10 @@ namespace tflite{
 
                 CSC_Params params;
 
-                params.CSC_C = *GetTensorData<int32_t>(CSC_C_tensor);
-                params.CSC_N = *GetTensorData<int32_t>(CSC_N_tensor);
-                params.CSC_F = *GetTensorData<int32_t>(CSC_F_tensor);
-                params.CSC_S = *GetTensorData<int32_t>(CSC_S_tensor);
+                params.CSC_C = *GetTensorData<int>(CSC_C_tensor);
+                params.CSC_N = *GetTensorData<int>(CSC_N_tensor);
+                params.CSC_F = *GetTensorData<int>(CSC_F_tensor);
+                params.CSC_S = *GetTensorData<int>(CSC_S_tensor);
 
                 // Prepare output tensor
                 TfLiteTensor* output = tflite::GetOutput(context, node, 0);
@@ -95,23 +95,23 @@ namespace tflite{
                 CSC_Params* params = reinterpret_cast<CSC_Params*>(node->user_data);
 
                 // Access the custom parameters
-                int32_t CSC_C = params->CSC_C;
-                int32_t CSC_N = params->CSC_N;
-                int32_t CSC_F = params->CSC_F;
-                int32_t CSC_S = params->CSC_S;
+                int CSC_C = params->CSC_C;
+                int CSC_N = params->CSC_N;
+                int CSC_F = params->CSC_F;
+                int CSC_S = params->CSC_S;
 
                 //implement the nested for loops here
                 for (int b = 0; b < batch_size; ++b) {
                     for (int o = 0; o < output_depth; ++o) {
-                        int32_t sum = 0;
-                        int32_t start_idx = (o + input_depth) % input_depth;
+                        float sum = 0;
+                        int start_idx = (o + input_depth) % input_depth;
                         for (int k = 0; k < CSC_F; ++k) {
                             int i = (start_idx + k) % input_depth;
-                            sum += GetTensorData<int32_t>(input)[b * input_depth + i] * GetTensorData<int32_t>(weights)[i * output_depth + o];
+                            sum += GetTensorData<float>(input)[b * input_depth + i] * GetTensorData<float>(weights)[i * output_depth + o];
                         }
-                        sum += GetTensorData<int32_t>(biases)[o];
+                        sum += GetTensorData<float>(biases)[o];
 
-                        GetTensorData<int32_t>(output)[b * output_depth + o] = sum;
+                        GetTensorData<float>(output)[b * output_depth + o] = sum;
                     }
                 }
 

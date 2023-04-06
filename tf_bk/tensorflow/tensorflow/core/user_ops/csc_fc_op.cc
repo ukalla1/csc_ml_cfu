@@ -30,7 +30,8 @@ void CscFcKernel(const Tensor& input_tensor, const Tensor& kernel_tensor, const 
     for (int o = 0; o < output_size; ++o) {
       int st_idx = (o + input_size) % input_size;
       T p = b_(o); // Initialize with bias value
-      for (int i = 0; i < csc_f; ++i) {
+      // for (int i = 0; i < csc_f; ++i) {
+      for (int i = 0; i <= csc_f; i=i+csc_s) {
         int new_i = (st_idx + i) % input_size;
         p += i_(b, new_i) * k_(o, new_i);
       }
