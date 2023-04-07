@@ -69,50 +69,50 @@ y_val = y_train[-2000:]
 x_train = x_train[:-2000,:,:,:]
 y_train = y_train[:-2000]
 
-CSC_C = tf.Variable(0)
-CSC_N = tf.Variable(0)
-CSC_F = tf.Variable(0)
-CSC_S = tf.Variable(0)
+# CSC_C = tf.Variable(0)
+# CSC_N = tf.Variable(0)
+# CSC_F = tf.Variable(0)
+# CSC_S = tf.Variable(0)
 
-model = models.Sequential()
-model = tf.keras.Sequential()
-model.add(layers.Conv2D(6, 5, activation='tanh', input_shape=x_train.shape[1:]))
-model.add(layers.AveragePooling2D(2))
-model.add(layers.Activation('sigmoid'))
-model.add(layers.Conv2D(16, 5, activation='tanh'))
-model.add(layers.AveragePooling2D(2))
-model.add(layers.Activation('sigmoid'))
-model.add(layers.Conv2D(120, 5, activation='tanh'))
-model.add(layers.Flatten())
-# model.add(layers.Dense(84, activation='tanh'))
-model.add(CSCFCLayer(csc_c=120, csc_n=84, csc_f=10, csc_s=1))
-model.add(layers.Dense(10, activation='softmax'))
-# model.add(CSCFCLayer(csc_c=84, csc_n=10, csc_f=42, csc_s=1))
-model.summary()
+# model = models.Sequential()
+# model = tf.keras.Sequential()
+# model.add(layers.Conv2D(6, 5, activation='tanh', input_shape=x_train.shape[1:]))
+# model.add(layers.AveragePooling2D(2))
+# model.add(layers.Activation('sigmoid'))
+# model.add(layers.Conv2D(16, 5, activation='tanh'))
+# model.add(layers.AveragePooling2D(2))
+# model.add(layers.Activation('sigmoid'))
+# model.add(layers.Conv2D(120, 5, activation='tanh'))
+# model.add(layers.Flatten())
+# # model.add(layers.Dense(84, activation='tanh'))
+# model.add(CSCFCLayer(csc_c=120, csc_n=84, csc_f=10, csc_s=1))
+# model.add(layers.Dense(10, activation='softmax'))
+# # model.add(CSCFCLayer(csc_c=84, csc_n=10, csc_f=42, csc_s=1))
+# model.summary()
 
-model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
+# model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
 
-# log_dir = "../bin/updated/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-log_dir = "../bin/updated/logs/fit/leNet_with_CSC_12xComp_test3"
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+# # log_dir = "../bin/updated/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+# log_dir = "../bin/updated/logs/fit/leNet_with_CSC_12xComp"
+# tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 
-history = model.fit(x_train, y_train, batch_size=64, epochs=32, validation_data=(x_val, y_val), callbacks=[tensorboard_callback])
-model.summary()
-# model.save('../bin/models/')
-tf.saved_model.save(model, export_dir="../bin/models/test_tflite/")
+# history = model.fit(x_train, y_train, batch_size=64, epochs=32, validation_data=(x_val, y_val), callbacks=[tensorboard_callback])
+# model.summary()
+# # model.save('../bin/models/')
+# tf.saved_model.save(model, export_dir="../bin/models/test_tflite/")
 
-#generate acc graphs
-fig, axs = plt.subplots(2, 1, figsize=(15,15))
-axs[0].plot(history.history['loss'])
-axs[0].plot(history.history['val_loss'])
-axs[0].title.set_text('Training Loss vs Validation Loss')
-axs[0].legend(['Train', 'Val'])
-axs[1].plot(history.history['accuracy'])
-axs[1].plot(history.history['val_accuracy'])
-axs[1].title.set_text('Training Accuracy vs Validation Accuracy')
-axs[1].legend(['Train', 'Val'])
-plt.savefig('../bin/misc/leNet_train_acc_test_2.png')
+# #generate acc graphs
+# fig, axs = plt.subplots(2, 1, figsize=(15,15))
+# axs[0].plot(history.history['loss'])
+# axs[0].plot(history.history['val_loss'])
+# axs[0].title.set_text('Training Loss vs Validation Loss')
+# axs[0].legend(['Train', 'Val'])
+# axs[1].plot(history.history['accuracy'])
+# axs[1].plot(history.history['val_accuracy'])
+# axs[1].title.set_text('Training Accuracy vs Validation Accuracy')
+# axs[1].legend(['Train', 'Val'])
+# plt.savefig('../bin/misc/leNet_train_acc_test_2.png')
 
 #tflite conversion
 def representative_dataset():
@@ -126,13 +126,16 @@ converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
 converter.target_spec.supported_ops = [
     tf.lite.OpsSet.TFLITE_BUILTINS,
     tf.lite.OpsSet.SELECT_TF_OPS,
-    ("/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so", "CscFc")
+    # ("/home/uttej/work/ra/tf/tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so", "CscFc")
 ]
 
 
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-converter.representative_dataset = representative_dataset
-converter.experimental_new_converter = True
+# converter.optimizations = [tf.lite.Optimize.DEFAULT]
+# converter.representative_dataset = representative_dataset
+# converter.experimental_new_converter = True
+converter.target_spec.experimental_select_user_tf_ops = [
+    'CscFc'
+]
 
 tflite_model = converter.convert()
 
